@@ -1,0 +1,49 @@
+{
+    "Comment":"A Step Functions stete machine",
+    "StartAt": "Stores_batch",
+    "States": {
+        "Stores_batch":{
+            "Type": "Parallel",
+            "Branches":[
+                %{~ for index, store_code in VAR_STORE_CODES ~}
+                %{ if index!=0},
+                %{ endif}
+                {
+                    "StartAt":"${store_code}_batch",
+                    "States":{
+                        "${store_code}_batch":{
+                            "Type":"Task",
+                            "Resource": "${VAR_LAMBDA_ARN}",
+                            "Retry": [
+                                {
+                                    "ErrorEquals":[
+                                        "States.ALL"
+                                    ],
+                                    "IntervalSeconds":1,
+                                    "MaxAttempts":2,
+                                    "BackoffRate":3
+                                }
+                            ],
+                            "Catch": [
+                                {
+                                    "ErrorEquals": [
+                                        "States.ALL"
+                                    ],
+                                    "Next":"${store_code}_batch Pass"
+                                }
+                            ],
+                            "Next":"${store_code}_batch Pass"
+                        },
+                        "${store_code}_batch Pass":{
+                            "Type": "Pass",
+                            "End": true
+                        }
+                    }
+                }
+                %{ endfor ~}
+            ],
+        "End":true
+        }
+    },
+    "TimeoutSeconds":${VAR_TIMEOUTSECONDS}
+}
